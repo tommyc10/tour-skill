@@ -1,0 +1,380 @@
+/* The tour: a blurred veil with a spotlight cut out of it, a ring on the spotlight's edge,
+ * and a glass card.
+ *
+ * The spotlight is four registered properties (--sx, --sy, --sw, --sh). Registering them as
+ * lengths is what lets them transition, so the veil's hole and the ring glide together from
+ * one target to the next. It's rare, first-run motion that explains where to look, so it gets
+ * a little longer than everyday UI (320ms).
+ *
+ * Theme it by overriding the --tour-* tokens (see "Theming" in the skill). Nothing below the
+ * token block should need to change. */
+
+@property --sx {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --sy {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --sw {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --sh {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* ---------- tokens (dark defaults) ----------
+ * Inside :where(), so these have no specificity: a plain `.tour { --tour-…: … }` in the app
+ * overrides them whichever stylesheet loads first. */
+
+:where(.tour) {
+  --tour-veil: rgba(0, 0, 0, 0.5);
+  --tour-blur: 6px;
+  --tour-ring: rgba(255, 255, 255, 0.4);
+  --tour-glow: rgba(255, 255, 255, 0.05);
+  --tour-surface: rgba(22, 22, 22, 0.6);
+  --tour-surface-solid: #1c1c1c;
+  --tour-edge: rgba(255, 255, 255, 0.07);
+  --tour-line: rgba(255, 255, 255, 0.11);
+  --tour-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --tour-fg: #ededed;
+  --tour-fg-2: #a3a3a3;
+  --tour-fg-3: #737373;
+  --tour-hover: rgba(255, 255, 255, 0.06);
+  --tour-primary: #fafafa;
+  --tour-primary-fg: #0a0a0a;
+  --tour-primary-hover: #e2e2e2;
+  --tour-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tour-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --tour-z: 1000;
+  --tour-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --tour-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --tour-glide: 320ms var(--tour-ease-in-out);
+}
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tour-z);
+  font-family: var(--tour-font);
+  color: var(--tour-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tour *,
+.tour *::before,
+.tour *::after {
+  box-sizing: border-box;
+}
+
+.tour-veil,
+.tour-ring {
+  /* Corner radius, shrunk for small spotlights so the corners never overlap. */
+  --r: min(12px, calc(var(--sw) / 2), calc(var(--sh) / 2));
+  transition:
+    --sx var(--tour-glide),
+    --sy var(--tour-glide),
+    --sw var(--tour-glide),
+    --sh var(--tour-glide),
+    opacity 240ms var(--tour-ease-out);
+}
+
+/* ---------- the veil ----------
+ * A rounded-rectangle hole is two overlapping rectangles plus a circle in each corner.
+ * The top layer (the whole window) subtracts the union of those six shapes below it. */
+
+.tour-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--tour-veil);
+  -webkit-backdrop-filter: blur(var(--tour-blur)) saturate(0.8);
+  backdrop-filter: blur(var(--tour-blur)) saturate(0.8);
+  --dot: radial-gradient(closest-side, #000 calc(100% - 0.5px), transparent 100%);
+  mask-image:
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0),
+    var(--dot),
+    var(--dot),
+    var(--dot),
+    var(--dot);
+  mask-size:
+    100% 100%,
+    var(--sw) max(0px, calc(var(--sh) - 2 * var(--r))),
+    max(0px, calc(var(--sw) - 2 * var(--r))) var(--sh),
+    calc(2 * var(--r)) calc(2 * var(--r)),
+    calc(2 * var(--r)) calc(2 * var(--r)),
+    calc(2 * var(--r)) calc(2 * var(--r)),
+    calc(2 * var(--r)) calc(2 * var(--r));
+  mask-position:
+    0 0,
+    var(--sx) calc(var(--sy) + var(--r)),
+    calc(var(--sx) + var(--r)) var(--sy),
+    var(--sx) var(--sy),
+    calc(var(--sx) + var(--sw) - 2 * var(--r)) var(--sy),
+    var(--sx) calc(var(--sy) + var(--sh) - 2 * var(--r)),
+    calc(var(--sx) + var(--sw) - 2 * var(--r)) calc(var(--sy) + var(--sh) - 2 * var(--r));
+  mask-repeat: no-repeat;
+  mask-composite: subtract, add, add, add, add, add, add;
+}
+
+/* ---------- the ring ---------- */
+
+.tour-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--sw);
+  height: var(--sh);
+  border-radius: var(--r);
+  transform: translate(var(--sx), var(--sy));
+  box-shadow:
+    0 0 0 1px var(--tour-ring),
+    0 0 0 5px var(--tour-glow);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.tour-ring[data-on] {
+  opacity: 1;
+}
+
+/* ---------- the card ---------- */
+
+.tour-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform var(--tour-glide);
+}
+
+.tour-pop {
+  position: relative;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  background: var(--tour-surface);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 var(--tour-edge),
+    0 0 0 1px var(--tour-line),
+    var(--tour-shadow);
+  transition:
+    opacity 240ms var(--tour-ease-out),
+    transform 240ms var(--tour-ease-out);
+}
+
+.tour-count {
+  font-family: var(--tour-mono);
+  font-size: 11px;
+  color: var(--tour-fg-3);
+}
+
+.tour-title {
+  margin: 6px 28px 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--tour-fg);
+}
+
+.tour-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--tour-fg-2);
+}
+
+.tour kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--tour-hover);
+  box-shadow: inset 0 0 0 1px var(--tour-line);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tour-fg-2);
+  vertical-align: 1px;
+}
+
+.tour-content {
+  animation: tour-text 200ms var(--tour-ease-out);
+}
+
+@keyframes tour-text {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.tour-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.tour-progress {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tour-progress span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tour-line);
+  transition: background-color 200ms ease;
+}
+
+.tour-progress span[data-done] {
+  background: var(--tour-fg-2);
+}
+
+/* ---------- buttons ---------- */
+
+.tour-btn,
+.tour-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--tour-fg-2);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--tour-ease-out),
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.tour-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tour-back {
+  padding: 0 9px;
+}
+
+.tour-btn[data-primary] {
+  background: var(--tour-primary);
+  color: var(--tour-primary-fg);
+}
+
+.tour-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--tour-fg-3);
+}
+
+.tour-btn:active,
+.tour-close:active {
+  transform: scale(0.97);
+}
+
+.tour-btn:focus-visible,
+.tour-close:focus-visible {
+  outline: 2px solid var(--tour-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tour-btn:not([data-primary]):hover,
+  .tour-close:hover {
+    background: var(--tour-hover);
+    color: var(--tour-fg);
+  }
+  .tour-btn[data-primary]:hover {
+    background: var(--tour-primary-hover);
+  }
+}
+
+/* ---------- coming and going ---------- */
+
+@starting-style {
+  .tour-veil {
+    opacity: 0;
+  }
+  .tour-pop {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+}
+
+.tour[data-leaving] {
+  pointer-events: none;
+}
+
+.tour[data-leaving] :is(.tour-veil, .tour-ring, .tour-pop) {
+  opacity: 0;
+  transition: opacity 180ms var(--tour-ease-out);
+}
+
+/* ---------- preferences people set in their OS ---------- */
+
+/* Less motion: the spotlight and card jump between steps; the fades stay. */
+@media (prefers-reduced-motion: reduce) {
+  .tour-veil,
+  .tour-ring {
+    transition: opacity 240ms var(--tour-ease-out);
+  }
+  .tour-card {
+    transition: none;
+  }
+  .tour-pop {
+    transition: opacity 240ms var(--tour-ease-out);
+  }
+  @starting-style {
+    .tour-pop {
+      transform: none;
+    }
+  }
+  .tour-content {
+    animation-name: tour-fade;
+  }
+  @keyframes tour-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* Less transparency: a solid card, and the veil dims without blurring. */
+@media (prefers-reduced-transparency: reduce) {
+  .tour-veil {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --tour-veil: rgba(0, 0, 0, 0.6);
+  }
+  .tour-pop {
+    background: var(--tour-surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
