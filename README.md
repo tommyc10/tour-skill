@@ -1,13 +1,15 @@
-# tour
+# tour-skill
 
-A Claude Code / agent skill that adds a guided product tour to a web app: the page blurs and
-dims, a rounded spotlight glides between the real UI elements, and a glass card explains each
-one. Invoke it with `/tour`.
+Agent skills (Claude Code, Codex and others) that add a guided product tour to a web app: the
+page dims, a rounded spotlight moves between the real UI elements, and a card explains each one.
 
-It ships a tested, dependency-free React engine, so every tour gets the same look, motion and
-performance, plus the parts that change per app: choosing and writing the steps, getting the
-page ready for each one, theming to the app's tokens, and a Playwright script that walks the
-tour and flags problems.
+| Skill | Command | Use it when |
+| --- | --- | --- |
+| [`tour`](skills/tour/SKILL.md) | `/tour` | The default. Blurred background, gliding spotlight, glass card. Switches itself to lite on a machine too slow for the blur |
+| [`tour-lite`](skills/tour-lite/SKILL.md) | `/tour-lite` | The audience is on remote desktops, dev pods, thin clients or old laptops. No blur, no glide, no fades: one repaint per step |
+
+Both use the same tested, dependency-free React engine, the same steps and the same keys. Moving
+between them is a one-prop change (`lite`).
 
 ## Install
 
@@ -15,33 +17,40 @@ tour and flags problems.
 npx skills add tommyc10/tour-skill
 ```
 
-Or copy `skills/tour/` into `~/.claude/skills/tour` (every project) or `.claude/skills/tour`
-(one project).
+That installs both. (`tour-lite` uses `tour`'s files, so keep them together.) To install by hand,
+copy `skills/tour/` and `skills/tour-lite/` into `~/.claude/skills/` (every project) or
+`.claude/skills/` (one project).
 
 ## Use
 
-In a project, run `/tour`, or ask for "a product tour of the settings page". The skill finds the
-page's key areas, proposes the steps, installs the engine, marks the targets, wires the entry
-points (first visit, a help button, the command palette, `?`) and checks it in a browser.
+In a project, run `/tour` or `/tour-lite`, or ask for "a product tour of the settings page". The
+skill finds the page's key areas, proposes the steps, installs the engine, marks the targets,
+wires the entry points (first visit, a help button, the command palette, `?`) and checks it in a
+browser.
 
-## What's inside
+## Layout
 
 ```
-skills/tour/
-├── SKILL.md              the workflow, hard rules, and what never to ship
-├── STEPS.md              choosing and writing steps, prepare(), entry points
-├── CRAFT.md              every visual and motion value and why, theming, performance
-├── assets/
-│   ├── Tour.tsx          the engine: spotlight, card, keyboard, focus, inert page
-│   ├── Tour.css          the masked blur veil, the glide, tokens, the low-power "lite" mode
-│   ├── useTour.ts        open / step / first-visit state
-│   └── example.tsx       wiring a page, with a step that opens a form and closes it again
-└── scripts/
-    └── check-tour.mjs    walk the tour, screenshot each step, report problems
+skills/
+├── tour/                     /tour
+│   ├── SKILL.md              the workflow, hard rules, and what never to ship
+│   ├── STEPS.md              choosing and writing steps, prepare(), entry points
+│   ├── CRAFT.md              every visual and motion value and why; lite; theming; performance
+│   ├── assets/
+│   │   ├── Tour.tsx          the engine: spotlight, card, keyboard, focus, inert page, lite
+│   │   ├── Tour.css          tokens, the masked blur veil, the glide, the lite styles
+│   │   ├── useTour.ts        open / step / first-visit state
+│   │   └── example.tsx       wiring a page, with a step that opens a form and closes it again
+│   └── scripts/
+│       └── check-tour.mjs    walk the tour, screenshot each step, report problems
+└── tour-lite/                /tour-lite
+    └── SKILL.md              what's different from /tour (it uses the files above)
 ```
 
-Requires React 18+ for the engine as-is; the skill explains how to port it to other frameworks.
-The check script needs Playwright (`npm i -D playwright && npx playwright install chromium`).
+## Requirements
+
+- React 18+ for the engine as-is. `tour/SKILL.md` explains how to port it to other frameworks.
+- Playwright for the check script: `npm i -D playwright && npx playwright install chromium`.
 
 ## License
 

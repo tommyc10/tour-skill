@@ -1,6 +1,6 @@
 ---
 name: tour
-description: Add a guided product tour to a web app. The page blurs and dims, a rounded spotlight glides between real UI elements, and a glass card explains each one. Ships a tested, dependency-free React engine (Tour.tsx + Tour.css), the rules for choosing and writing steps, theming to the app's tokens, and a Playwright script that walks the tour and flags problems. Use when asked for a product tour, onboarding walkthrough, feature tour, coach marks, spotlight tutorial, "show new users around", "walk people through the UI", or /tour.
+description: Add a guided product tour to a web app. The page blurs and dims, a rounded spotlight glides between real UI elements, and a glass card explains each one. Ships a tested, dependency-free React engine (Tour.tsx + Tour.css), the rules for choosing and writing steps, theming to the app's tokens, and a Playwright script that walks the tour and flags problems. Use when asked for a product tour, onboarding walkthrough, feature tour, coach marks, spotlight tutorial, "show new users around", "walk people through the UI", or /tour. For machines too slow for the blur (remote desktops, dev pods), use tour-lite.
 ---
 
 # Guided tours
@@ -12,6 +12,16 @@ starts once on a first visit, and can be replayed from a help button, a command 
 
 It does ONE thing: add that tour to an existing page. It doesn't build empty-state onboarding,
 checklists, or feature announcements.
+
+## Two versions, one engine
+
+| Command | What you get | The prop |
+| --- | --- | --- |
+| `/tour` | The full tour. On a machine too slow for the blur it switches itself to lite | `lite="auto"` |
+| `/tour-lite` | The low-power tour, always: no blur, no glide, no fades | `lite` |
+
+Use `/tour` unless you know the audience is on remote desktops, dev pods or thin clients; then
+use [`tour-lite`](../tour-lite/SKILL.md). Switching later is a one-prop change.
 
 ## Hard rules
 
@@ -74,9 +84,8 @@ Follow `assets/example.tsx`:
 
 - `const tour = useTour(steps.length, { storageKey: '<page>-tour' })`
 - `{tour.open && <Tour steps={steps} index={tour.index} onIndex={tour.go} onDone={tour.finish} lite="auto" />}`
-- `lite`: `"auto"` (recommended) shows the full tour and switches to the low-power one only if
-  the first frames are slow. `true` forces low-power: use it when the app mostly runs on remote
-  desktops, dev pods or thin clients. `false` (default) never switches. See "Lite" in
+- `lite="auto"` shows the full tour and switches to the low-power one only if the first frames
+  are slow. (`lite` forces low-power; leaving it off never switches.) See "Lite" in
   [CRAFT.md](CRAFT.md).
 - A `startTour()` wrapper that first puts the page in a good state (panels shown, overlays closed,
   an interesting record selected), then calls `tour.start()`.
@@ -101,17 +110,18 @@ Test ending the tour halfway through (Esc) and check the page is exactly as it w
 ## Not React
 
 Keep `Tour.css` exactly; port `Tour.tsx`'s behaviour to the framework. It must: find the target by
-`data-tour`, re-measure it every animation frame (write the four `--s*` properties only when the
-rounded box changes), place the card with the same side-fallback order, render to `<body>`, make
+`data-tour`, re-measure it every animation frame, or every 120ms in lite (write the four `--s*`
+properties only when the rounded box changes), place the card with the same side-fallback order, render to `<body>`, make
 the rest of `<body>` inert, run/undo `prepare` per step, handle → ↵ ← Esc in the capture phase,
-focus Next on each step, and fade out for 180ms before unmounting.
+focus Next on each step, fade out for 180ms before unmounting (lite: at once), and set
+`data-lite` on the root for the lite styles.
 
 ## Never ship
 
 | Never | Instead |
 | --- | --- |
 | Screenshots or a separate tour page | Spotlight the live elements |
-| A rectangular hole, or `box-shadow: 0 0 0 9999px` to dim | The masked, blurred veil in `Tour.css` |
+| A rectangular hole, or your own dimming overlay | The veil in `Tour.css` (masked and blurred; one flat shadow in lite) |
 | Tweening the mask with JS every frame | Transition the registered `--s*` properties in CSS |
 | Measuring once when the step starts | Re-measure every frame; targets move |
 | `prepare` without an undo, or an undo that closes the user's own work | Return a cleanup that only reverses the tour's change |
@@ -120,14 +130,15 @@ focus Next on each step, and fade out for 180ms before unmounting.
 | Titles that repeat the UI label ("The Filter Bar") | Say what it's for ("Narrow it down") |
 | 15 steps | 6–10; cut to what a first-timer needs today |
 | Removing the reduced-motion / reduced-transparency blocks | Keep them; they ship with it |
-| The full blur on machines that can't draw it (remote desktops, dev pods) | `lite="auto"`, or `lite` if you know the audience |
+| The full blur on machines that can't draw it (remote desktops, dev pods) | `lite="auto"`, or `/tour-lite` if you know the audience |
 
 ## Files
 
-- `assets/Tour.tsx`: the engine (spotlight, card, keyboard, inert, `prepare`)
-- `assets/Tour.css`: the veil mask, the glide, the card, tokens, OS preferences
+- `assets/Tour.tsx`: the engine (spotlight, card, keyboard, inert, `prepare`, `lite`)
+- `assets/Tour.css`: tokens, the veil mask, the glide, the card, the lite styles, OS preferences
 - `assets/useTour.ts`: open / step / first-visit state
 - `assets/example.tsx`: steps built from page callbacks, and the wiring
 - `scripts/check-tour.mjs`: walk the tour, screenshot every step, report problems
 - [STEPS.md](STEPS.md): choosing and writing steps, `prepare`, entry points
-- [CRAFT.md](CRAFT.md): every visual and motion value, and why; theming; performance
+- [CRAFT.md](CRAFT.md): every visual and motion value, and why; lite; theming; performance
+- [`../tour-lite/`](../tour-lite/SKILL.md): the `/tour-lite` command (uses the files above)
