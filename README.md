@@ -33,7 +33,7 @@ skills/tour/
 ├── CRAFT.md              every visual and motion value and why, theming, performance
 ├── assets/
 │   ├── Tour.tsx          the engine: spotlight, card, keyboard, focus, inert page
-│   ├── Tour.css          the masked blur veil, the glide, tokens, reduced motion/transparency
+│   ├── Tour.css          the masked blur veil, the glide, tokens, the low-power "lite" mode
 │   ├── useTour.ts        open / step / first-visit state
 │   └── example.tsx       wiring a page, with a step that opens a form and closes it again
 └── scripts/

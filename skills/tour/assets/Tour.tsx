@@ -50,6 +50,9 @@ const GAP = 14; // between the spotlight and the card
 const MARGIN = 12; // keep the card this far inside the window
 const CARD_W = 340;
 const LEAVE_MS = 180; // matches the fade-out in Tour.css
+const LITE_POLL_MS = 120; // lite: how often to re-measure the target (instead of every frame)
+const PROBE_FRAMES = 12; // 'auto': frames timed before deciding
+const SLOW_FRAME_MS = 30; // 'auto': a median frame slower than this (under ~33fps) means lite
 
 /** The target's box plus padding, trimmed to the window (a tall list shouldn't spill off-screen). */
 function measure(el: HTMLElement): Box | null {
@@ -98,12 +101,16 @@ export function Tour({
   index,
   onIndex,
   onDone,
+  lite = false,
 }: {
   steps: TourStep[];
   index: number;
   onIndex: (index: number) => void;
   /** Called once the tour has faded out: finished, skipped or closed. */
   onDone: () => void;
+  /** The low-power version: dim without blur, a solid card, and jumps instead of glides.
+   *  'auto' times the first frames and switches to it only if the machine is struggling. */
+  lite?: boolean | 'auto';
 }) {
   const step = steps[index];
   const last = index === steps.length - 1;
@@ -112,6 +119,8 @@ export function Tour({
   const [view, setView] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [cardH, setCardH] = useState(220);
   const [leaving, setLeaving] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const isLite = lite === true || slow;
   const rootRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
@@ -134,9 +143,31 @@ export function Tour({
     };
   }, [index]);
 
-  // Find the step's target, bring it into view, then follow it every frame.
+  // 'auto': time the first frames, while the blur is showing. Too slow, and it goes lite.
+  useEffect(() => {
+    if (lite !== 'auto') return;
+    let frame = 0;
+    let last = 0;
+    const gaps: number[] = [];
+    const tick = (now: number) => {
+      if (last) gaps.push(now - last);
+      last = now;
+      if (gaps.length < PROBE_FRAMES) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+      const median = [...gaps].sort((a, b) => a - b)[gaps.length >> 1];
+      if (median > SLOW_FRAME_MS) setSlow(true);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [lite]);
+
+  // Find the step's target, bring it into view, then follow it: every frame, or in lite a
+  // few times a second (nothing glides, so that's plenty).
   useLayoutEffect(() => {
     let frame = 0;
+    let timer = 0;
     let seen = '';
     let scrolled = false;
     const follow = () => {
@@ -151,11 +182,15 @@ export function Tour({
         seen = key;
         setBox(next);
       }
-      frame = requestAnimationFrame(follow);
+      if (isLite) timer = window.setTimeout(follow, LITE_POLL_MS);
+      else frame = requestAnimationFrame(follow);
     };
     follow();
-    return () => cancelAnimationFrame(frame);
-  }, [step.target]);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [step.target, isLite]);
 
   useEffect(() => {
     const onResize = () => setView({ w: window.innerWidth, h: window.innerHeight });
@@ -179,7 +214,7 @@ export function Tour({
   const leave = () => {
     if (leaving) return;
     setLeaving(true);
-    setTimeout(onDone, LEAVE_MS);
+    setTimeout(onDone, isLite ? 0 : LEAVE_MS);
   };
   const next = () => (last ? leave() : onIndex(index + 1));
   const back = () => index > 0 && onIndex(index - 1);
@@ -219,6 +254,7 @@ export function Tour({
       ref={rootRef}
       className="tour"
       data-leaving={leaving || undefined}
+      data-lite={isLite || undefined}
       data-target={step.target}
       data-found={step.target ? Boolean(box) : undefined}
     >

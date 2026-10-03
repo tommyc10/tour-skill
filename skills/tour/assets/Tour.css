@@ -36,6 +36,7 @@
 
 :where(.tour) {
   --tour-veil: rgba(0, 0, 0, 0.5);
+  --tour-veil-lite: rgba(0, 0, 0, 0.62); /* lite has no blur, so it dims a little more */
   --tour-blur: 6px;
   --tour-ring: rgba(255, 255, 255, 0.4);
   --tour-glow: rgba(255, 255, 255, 0.05);
@@ -334,6 +335,45 @@
 .tour[data-leaving] :is(.tour-veil, .tour-ring, .tour-pop) {
   opacity: 0;
   transition: opacity 180ms var(--tour-ease-out);
+}
+
+/* ---------- lite: for machines without the power for blur ----------
+ * Remote desktops, dev pods, old laptops. Everything that repaints the whole window every
+ * frame is gone: no blur, no mask, no glide, no fades. The dim is one flat shadow around the
+ * ring, the card is solid, and each step simply appears. */
+
+.tour[data-lite] .tour-veil {
+  display: none;
+}
+
+.tour[data-lite] .tour-ring {
+  opacity: 1;
+  transition: none;
+  box-shadow: 0 0 0 200vmax var(--tour-veil-lite, rgba(0, 0, 0, 0.62));
+}
+
+.tour[data-lite] .tour-ring[data-on] {
+  box-shadow:
+    0 0 0 1px var(--tour-ring),
+    0 0 0 200vmax var(--tour-veil-lite, rgba(0, 0, 0, 0.62));
+}
+
+.tour[data-lite] .tour-card {
+  transition: none;
+}
+
+.tour[data-lite] .tour-pop {
+  background: var(--tour-surface-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow:
+    0 0 0 1px var(--tour-line),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: none;
+}
+
+.tour[data-lite] .tour-content {
+  animation: none;
 }
 
 /* ---------- preferences people set in their OS ---------- */

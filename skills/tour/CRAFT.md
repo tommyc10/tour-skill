@@ -74,6 +74,32 @@ height is watched with a `ResizeObserver`, so placement stays right when text wr
 - The card and ring move with `transform`. The ring's `width`/`height` follow `--sw`/`--sh`, a
   layout change on one fixed, childless element: negligible.
 
+## Lite: the low-power version
+
+The blur is the expensive part: while the spotlight glides, the whole window's blurred layer is
+redrawn every frame. Machines without a real GPU (remote desktops, dev pods, thin clients, old
+laptops) can't keep up, and the tour stutters. `lite` removes everything that repaints the whole
+window per frame:
+
+| Full | Lite |
+| --- | --- |
+| Blurred, dimmed veil with a masked hole | No veil. One flat `box-shadow` around the ring dims the page (`--tour-veil-lite`, a little darker to make up for the missing blur) |
+| Spotlight and card glide 320ms | They jump. Each step is a single repaint |
+| Glass card (`blur(40px)`) | Solid card (`--tour-surface-solid`), smaller shadow |
+| Fades in and out, text fades per step | Appears and disappears at once |
+| Target re-measured every frame | Re-measured every 120ms |
+
+`lite="auto"` times 12 frames as the tour opens, with the blur showing. If the median frame is
+slower than 30ms (under about 33fps), it switches to lite for the rest of that tour. Fast machines
+never notice; slow ones see a moment of the full version, then the light one.
+
+Measured on the reference build, software-rendered with the CPU throttled 6×, stepping through
+the whole tour: full ran at a median 33ms per frame (95th percentile 100ms); lite at 17ms (95th
+percentile 17ms).
+
+Lite is not the same as reduced motion: reduced motion keeps the blur and the fades. Lite is about
+what the machine can draw, not what the person prefers.
+
 ## Accessibility
 
 - The card is `role="dialog"` `aria-modal`, labelled by its title and described by its body; the
@@ -90,6 +116,7 @@ Override in one block, mapping to the app's tokens. The dark defaults in `Tour.c
 | Token | For | Dark default | Light suggestion |
 | --- | --- | --- | --- |
 | `--tour-veil` | dim over the page | `rgba(0,0,0,.5)` | `rgba(0,0,0,.22)` |
+| `--tour-veil-lite` | dim in lite mode (no blur) | `rgba(0,0,0,.62)` | `rgba(0,0,0,.4)` |
 | `--tour-blur` | veil blur | `6px` | `6px` |
 | `--tour-ring` | spotlight edge, focus outline | `rgba(255,255,255,.4)` | `rgba(0,0,0,.35)` |
 | `--tour-glow` | soft halo round the ring | `rgba(255,255,255,.05)` | `rgba(0,0,0,.05)` |

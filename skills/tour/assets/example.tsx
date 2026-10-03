@@ -91,7 +91,8 @@ export function ExamplePage() {
       {formOpen && <form data-tour="form">…</form>}
       <button onClick={startTour}>Take the tour</button>
 
-      {tour.open && <Tour steps={steps} index={tour.index} onIndex={tour.go} onDone={tour.finish} />}
+      {/* lite="auto": the full tour, unless the machine is too slow for the blur. */}
+      {tour.open && <Tour steps={steps} index={tour.index} onIndex={tour.go} onDone={tour.finish} lite="auto" />}
     </div>
   );
 }

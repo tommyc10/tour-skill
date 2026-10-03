@@ -7,6 +7,8 @@
  *   node check-tour.mjs --url http://localhost:5173 --out ./tour-shots
  *   node check-tour.mjs --url … --size 1280x800 --scheme light      # prefers-color-scheme
  *   node check-tour.mjs --url … --reduced                           # prefers-reduced-motion
+ *   (the output says whether the tour ran full or lite; headless browsers are slow, so
+ *    lite="auto" usually picks lite here)
  *   node check-tour.mjs --url … --start "[aria-label='Take the tour']"   # click to start
  *   node check-tour.mjs --url … --start "key:?"                     # press a key to start
  *   node check-tour.mjs --url … --init "localStorage.setItem('theme','light')"   # run before load
@@ -61,6 +63,8 @@ await page.waitForSelector('.tour-card', { timeout: 8000 }).catch(() => {
 });
 
 const problems = [];
+const mode = () => page.$eval('.tour', (el) => (el.hasAttribute('data-lite') ? 'lite' : 'full'));
+let lastMode = 'full';
 const count = await page.$eval('.tour-count', (el) => Number(el.textContent.split('/')[1]));
 for (let i = 0; i < count; i++) {
   await page.waitForTimeout(settle);
@@ -74,9 +78,11 @@ for (let i = 0; i < count; i++) {
   const note = s.target ? (s.found === 'true' ? `→ [data-tour="${s.target}"]` : `✗ [data-tour="${s.target}"] NOT FOUND`) : '(centred)';
   console.log(`${tag}  ${s.title}  ${note}`);
   if (s.target && s.found !== 'true') problems.push(`Step ${i + 1}: no visible [data-tour="${s.target}"]`);
+  lastMode = await mode();
   await page.keyboard.press('ArrowRight');
 }
 
+console.log(`\nRan as: ${lastMode}`);
 await page.waitForTimeout(400);
 if (await page.$('.tour')) problems.push('The tour is still open after the last step.');
 const remembered = await page.evaluate(() => Object.keys(localStorage).some((k) => /tour/i.test(k)));

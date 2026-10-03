@@ -73,7 +73,11 @@ Steps live in their own file next to the engine (e.g. `tours/review-queue.tsx`).
 Follow `assets/example.tsx`:
 
 - `const tour = useTour(steps.length, { storageKey: '<page>-tour' })`
-- `{tour.open && <Tour steps={steps} index={tour.index} onIndex={tour.go} onDone={tour.finish} />}`
+- `{tour.open && <Tour steps={steps} index={tour.index} onIndex={tour.go} onDone={tour.finish} lite="auto" />}`
+- `lite`: `"auto"` (recommended) shows the full tour and switches to the low-power one only if
+  the first frames are slow. `true` forces low-power: use it when the app mostly runs on remote
+  desktops, dev pods or thin clients. `false` (default) never switches. See "Lite" in
+  [CRAFT.md](CRAFT.md).
 - A `startTour()` wrapper that first puts the page in a good state (panels shown, overlays closed,
   an interesting record selected), then calls `tour.start()`.
 - Gate the global shortcut handler on `tour.open`. Add `?` → `startTour`.
@@ -116,6 +120,7 @@ focus Next on each step, and fade out for 180ms before unmounting.
 | Titles that repeat the UI label ("The Filter Bar") | Say what it's for ("Narrow it down") |
 | 15 steps | 6–10; cut to what a first-timer needs today |
 | Removing the reduced-motion / reduced-transparency blocks | Keep them; they ship with it |
+| The full blur on machines that can't draw it (remote desktops, dev pods) | `lite="auto"`, or `lite` if you know the audience |
 
 ## Files
 
